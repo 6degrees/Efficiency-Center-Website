@@ -1,14 +1,31 @@
 "use client";
 
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { SERVICE_PILLARS } from "@/lib/profile";
 import { withBasePath } from "@/lib/paths";
-import { UNITS, getUnitImage } from "@/lib/units";
+import { getUnits } from "@/lib/efficiency-center";
+import type { UnitWithShape } from "@/lib/efficiency-center";
 import { useReveal } from "@/hooks/useReveal";
+import Image from "next/image";
 
 export default function Services() {
   const intro = useReveal({ stagger: true });
   const grid = useReveal();
+  const [units, setUnits] = useState<UnitWithShape[]>([]);
+
+  // getUnits() fetches from Strapi, so this runs client-side.
+  useEffect(() => {
+    let cancelled = false;
+
+    getUnits().then((data) => {
+      if (cancelled) return;
+      setUnits(data);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section className="services" id="services">
@@ -67,14 +84,14 @@ export default function Services() {
           </div>
 
           <div className={`units-grid ${grid.className}`} ref={grid.ref}>
-            {UNITS.map((unit) => (
+            {units.map((unit) => (
               <div
                 key={unit.slug}
-                className={`unit-card ${unit.featured ? "unit-card--featured" : ""}`}
+                className={`unit-card ${unit.shape === "tall" ? "unit-card--featured" : ""}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getUnitImage(unit)}
+                  src={unit.image}
                   alt={unit.title}
                   className="unit-card__img"
                   loading="lazy"

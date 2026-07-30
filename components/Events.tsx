@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { EVENTS } from "@/lib/events";
-import { withBasePath } from "@/lib/paths";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getEvents } from "@/lib/efficiency-center";
+import type { EventCard } from "@/lib/events";
 import { useReveal } from "@/hooks/useReveal";
 
 const COPIES = 3;
-const ITEMS = Array.from({ length: COPIES }, () => EVENTS).flat();
 
 export default function Events() {
   const head = useReveal({ stagger: true });
@@ -16,6 +15,26 @@ export default function Events() {
   const scrollStart = useRef(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [events, setEvents] = useState<EventCard[]>([]);
+
+  // getEvents() fetches from Strapi, so this runs client-side.
+  useEffect(() => {
+    let cancelled = false;
+
+    getEvents().then((data) => {
+      if (cancelled) return;
+      setEvents(data);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const ITEMS = useMemo(
+    () => Array.from({ length: COPIES }, () => events).flat(),
+    [events]
+  );
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -99,7 +118,7 @@ export default function Events() {
     const keetaOffset = (cardWidth + gap) * 1;
     track.scrollLeft = oneSet * Math.floor(COPIES / 2) + keetaOffset - (track.clientWidth / 2 - cardWidth / 2);
     updateScale();
-  }, [updateScale, isMobile]);
+  }, [updateScale, isMobile, events]);
 
   useEffect(() => {
     window.addEventListener("resize", updateScale);
@@ -161,11 +180,11 @@ export default function Events() {
             <article
               key={`${event.id}-${i}`}
               className="events__card"
-              aria-hidden={i >= EVENTS.length && i < ITEMS.length - EVENTS.length ? true : undefined}
+              aria-hidden={i >= events.length && i < ITEMS.length - events.length ? true : undefined}
             >
               {event.video ? (
                 <video
-                  src={withBasePath(event.video)}
+                  src={event.video}
                   className="events__card-img"
                   muted
                   loop
@@ -177,7 +196,7 @@ export default function Events() {
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={withBasePath(event.image)}
+                  src={event.image}
                   alt={event.title}
                   className="events__card-img"
                   loading="lazy"

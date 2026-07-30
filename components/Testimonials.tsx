@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PixelAvatar from "@/components/PixelAvatar";
-import { GOOGLE_MAPS_REVIEWS_URL, TESTIMONIALS } from "@/lib/testimonials";
+import { GOOGLE_MAPS_REVIEWS_URL } from "@/lib/testimonials";
+import type { Testimonial } from "@/lib/testimonials";
+import { getTestimonials } from "@/lib/efficiency-center";
 import { useReveal } from "@/hooks/useReveal";
 
 const COPIES = 3;
-const ITEMS = Array.from({ length: COPIES }, () => TESTIMONIALS).flat();
 
 export default function Testimonials() {
   const head = useReveal({ stagger: true });
@@ -14,6 +15,26 @@ export default function Testimonials() {
   const dragging = useRef(false);
   const startX = useRef(0);
   const scrollStart = useRef(0);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+
+  // getTestimonials() fetches from Strapi, so this runs client-side.
+  useEffect(() => {
+    let cancelled = false;
+
+    getTestimonials().then((data) => {
+      if (cancelled) return;
+      setTestimonials(data);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const ITEMS = useMemo(
+    () => Array.from({ length: COPIES }, () => testimonials).flat(),
+    [testimonials]
+  );
 
   const loopScroll = useCallback(() => {
     const track = trackRef.current;
@@ -31,7 +52,7 @@ export default function Testimonials() {
     if (!track) return;
     const oneSet = track.scrollWidth / COPIES;
     track.scrollLeft = oneSet * Math.floor(COPIES / 2);
-  }, []);
+  }, [testimonials]);
 
   const onScroll = useCallback(() => {
     loopScroll();
@@ -96,7 +117,7 @@ export default function Testimonials() {
               <article
                 key={`${item.id}-${i}`}
                 className="testimonials__card"
-                aria-hidden={i >= TESTIMONIALS.length && i < ITEMS.length - TESTIMONIALS.length ? true : undefined}
+                aria-hidden={i >= testimonials.length && i < ITEMS.length - testimonials.length ? true : undefined}
               >
                 <div className="testimonials__card-media">
                   <PixelAvatar seed={item.id} variant={item.silhouette} className="testimonials__portrait" />

@@ -1,25 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { PARTNER_LOGOS, type PartnerLogo } from "@/lib/data";
-import { withBasePath } from "@/lib/paths";
+import { useEffect, useState } from "react";
+import { getPartnerLogos, type PartnerLogoItem } from "@/lib/efficiency-center";
 import { useReveal } from "@/hooks/useReveal";
 
-function PartnerLogoItem({ partner }: { partner: PartnerLogo }) {
+function PartnerLogoItemView({ partner }: { partner: PartnerLogoItem }) {
   const [placeholder, setPlaceholder] = useState(false);
-  const src = withBasePath(`/assets/imgs/logos/partners/${partner.file}`);
 
   return (
     <div className={`partners__logo ${placeholder ? "partners__logo--placeholder" : ""}`}>
       {!placeholder && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={src}
+          src={partner.logo}
           alt={`${partner.name} logo`}
           width={120}
           height={80}
           loading="lazy"
-          className={partner.color ? "partners__logo-img--color" : undefined}
+          className="partners__logo-img--color"
           onError={() => setPlaceholder(true)}
           draggable={false}
         />
@@ -28,12 +26,27 @@ function PartnerLogoItem({ partner }: { partner: PartnerLogo }) {
   );
 }
 
-const half = Math.ceil(PARTNER_LOGOS.length / 2);
-const ROW_1 = PARTNER_LOGOS.slice(0, half);
-const ROW_2 = PARTNER_LOGOS.slice(half);
-
 export default function Partners() {
   const intro = useReveal({ stagger: true });
+  const [partners, setPartners] = useState<PartnerLogoItem[]>([]);
+
+  // getPartnerLogos() fetches from Strapi, so this runs client-side.
+  useEffect(() => {
+    let cancelled = false;
+
+    getPartnerLogos().then((data) => {
+      if (cancelled) return;
+      setPartners(data);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const half = Math.ceil(partners.length / 2);
+  const row1 = partners.slice(0, half);
+  const row2 = partners.slice(half);
 
   return (
     <section className="section partners" id="partners">
@@ -49,15 +62,15 @@ export default function Partners() {
       <div className="partners__marquee">
         <div className="partners__row partners__row--left">
           <div className="partners__row-inner">
-            {[...ROW_1, ...ROW_1].map((partner, i) => (
-              <PartnerLogoItem key={`${partner.file}-${i}`} partner={partner} />
+            {[...row1, ...row1].map((partner, i) => (
+              <PartnerLogoItemView key={`${partner.name}-${i}`} partner={partner} />
             ))}
           </div>
         </div>
         <div className="partners__row partners__row--right">
           <div className="partners__row-inner">
-            {[...ROW_2, ...ROW_2].map((partner, i) => (
-              <PartnerLogoItem key={`${partner.file}-${i}`} partner={partner} />
+            {[...row2, ...row2].map((partner, i) => (
+              <PartnerLogoItemView key={`${partner.name}-${i}`} partner={partner} />
             ))}
           </div>
         </div>
